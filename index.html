@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CCTV Checklist</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0b132b"/>
+</head>
+<body>
+  <header>
+    <h1>CCTV Pre-Installation Checklist</h1>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Customer Profile</h2>
+      <label>
+        Customer Name
+        <input type="text" id="customerName" placeholder="Customer Name"/>
+      </label>
+      <label>
+        Address
+        <input type="text" id="customerAddress" placeholder="Address"/>
+      </label>
+      <label>
+        General Notes
+        <textarea id="customerNotes" placeholder="Notes about this walkthrough"></textarea>
+      </label>
+    </section>
+
+    <section class="card">
+      <div class="row space-between center">
+        <h2>Galleries</h2>
+        <button class="primary" id="btnAddGallery">Add Gallery</button>
+      </div>
+      <div id="galleries"></div>
+    </section>
+
+    <section class="actions">
+      <button id="btnExport" class="primary">Download PDF Report</button>
+      <button id="btnSave">Save</button>
+      <button id="btnReset" class="danger">Reset</button>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="./app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
+  </script>
+</body>
+</html>
