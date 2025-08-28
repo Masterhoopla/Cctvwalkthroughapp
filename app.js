@@ -1,3 +1,4 @@
+alert('app.js loaded v2');
 // Data model
 let state = {
   customer: { name: '', address: '', notes: '' },
