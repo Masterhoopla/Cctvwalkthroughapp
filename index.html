@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CCTV Checklist</title>
-  <link rel="stylesheet" href="./style.css?v=3001" />
+  <link rel="stylesheet" href="./style.css?v=3003" />
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#0b132b"/>
 </head>
@@ -46,16 +46,16 @@
   </main>
 
   <!-- jsPDF for PDF export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/Jk1xF8pV8O8v3f8FfW1m9HfQx0w9r3T4S2TjI0bJv3S4lNqT1nq9m1Y3R1b1tZbQd0H8m8F1Gq2v1JmXzY2/w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- Your app logic (MUST be included) -->
-  <script src="./app.js?v=3001"></script>
+  <script src="./app.js?v=3003"></script>
 
   <!-- Service worker registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2')
+        navigator.serviceWorker.register('./sw.js?v=3')
           .then(reg => {
             if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
           });
