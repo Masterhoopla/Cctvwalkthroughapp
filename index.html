@@ -537,7 +537,19 @@ function numberPages(doc, formatter){
     doc.setTextColor(0);
   }
 }
+ function escapeHtml(s=''){
+    return s.replace(/[&<>"']/g, c => (
+      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+    ));
+  }
 
+  function toast(msg){
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1300);
+  }
   </script>
 </body>
 </html>
