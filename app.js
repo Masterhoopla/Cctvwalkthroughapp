@@ -1,50 +1,54 @@
 // Data model
 let state = {
   customer: { name: '', address: '', notes: '' },
-  galleries: [] // { name, actions:{add,replace,relocate,remove}, note:'', photos:[] }
+  galleries: []
 };
 
-// DOM refs
 const el = (id) => document.getElementById(id);
 const galleriesEl = el('galleries');
+
+function bind(id, event, handler){
+  const node = el(id);
+  if (node) node.addEventListener(event, handler);
+}
 
 // Init
 load();
 render();
 
-// Event bindings
-el('btnAddGallery').addEventListener('click', () => {
+bind('btnAddGallery', 'click', onAddGallery);
+bind('btnExport', 'click', generatePDF);
+bind('btnSave', 'click', () => { collectHeader(); save(); toast('Saved'); });
+bind('btnReset', 'click', () => {
+  if (confirm('Clear all data?')) { 
+    state = { customer:{name:'',address:'',notes:''}, galleries:[] }; 
+    save(); render(); 
+  }
+});
+
+function onAddGallery(){
   const name = prompt('Enter gallery name:');
   if (!name) return;
   state.galleries.push({
-    name,
+    name: name.trim(),
     actions: { add:false, replace:false, relocate:false, remove:false },
     note: '',
     photos: []
   });
-  save(); render();
-});
+  save(); render(); toast('Gallery added');
+}
 
-el('btnExport').addEventListener('click', generatePDF);
-el('btnSave').addEventListener('click', () => { collectHeader(); save(); alert('Saved'); });
-el('btnReset').addEventListener('click', () => {
-  if (confirm('Clear all data?')) { state = { customer:{name:'',address:'',notes:''}, galleries:[] }; save(); render(); }
-});
-
-// Helpers
 function collectHeader(){
-  state.customer.name = el('customerName').value.trim();
-  state.customer.address = el('customerAddress').value.trim();
-  state.customer.notes = el('customerNotes').value.trim();
+  state.customer.name = el('customerName')?.value.trim() || '';
+  state.customer.address = el('customerAddress')?.value.trim() || '';
+  state.customer.notes = el('customerNotes')?.value.trim() || '';
 }
 
 function render(){
-  // header
-  el('customerName').value = state.customer.name || '';
-  el('customerAddress').value = state.customer.address || '';
-  el('customerNotes').value = state.customer.notes || '';
+  if (el('customerName')) el('customerName').value = state.customer.name || '';
+  if (el('customerAddress')) el('customerAddress').value = state.customer.address || '';
+  if (el('customerNotes')) el('customerNotes').value = state.customer.notes || '';
 
-  // galleries
   galleriesEl.innerHTML = '';
   state.galleries.forEach((g, idx) => {
     const wrap = document.createElement('div');
@@ -80,18 +84,27 @@ function render(){
         <small class="muted">Tip: use the checklist above to mark planned work.</small>
       </div>
 
-      <div class="photos" id="photos-${idx}">
-        ${g.photos.map(src => `<img src="${src}" alt="gallery photo">`).join('')}
-      </div>
+      <div class="photos" id="photos-${idx}"></div>
     `;
-    // Bind dynamic controls
+
+    // Render photos explicitly
+    const photosWrap = wrap.querySelector('#photos-' + idx);
+    g.photos.forEach(src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = 'gallery photo';
+      photosWrap.appendChild(img);
+    });
+
     wrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
       cb.addEventListener('change', () => {
         const k = cb.id.split('-')[0];
         g.actions[k] = cb.checked; save();
       });
     });
-    wrap.querySelector('textarea').addEventListener('input', (e) => { g.note = e.target.value; save(); });
+
+    const ta = wrap.querySelector('textarea');
+    ta.addEventListener('input', (e) => { g.note = e.target.value; save(); });
 
     wrap.querySelectorAll('button[data-act]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -99,7 +112,7 @@ function render(){
         if (act === 'photo') addPhoto(idx);
         if (act === 'rename') {
           const newName = prompt('New gallery name:', g.name);
-          if (newName) { g.name = newName; save(); render(); }
+          if (newName) { g.name = newName.trim(); save(); render(); }
         }
         if (act === 'delete') {
           if (confirm('Delete this gallery?')) { state.galleries.splice(idx,1); save(); render(); }
@@ -123,14 +136,15 @@ function addPhoto(index){
     reader.onload = () => {
       state.galleries[index].photos.push(reader.result);
       save(); render();
+      const scroller = document.getElementById('photos-' + index);
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
     };
     reader.readAsDataURL(file);
   };
   input.click();
 }
 
-// Storage
-function save(){ localStorage.setItem('cctv-checklist', JSON.stringify(state)); }
+function save(){ try{ localStorage.setItem('cctv-checklist', JSON.stringify(state)); }catch(e){ console.warn(e); } }
 function load(){
   try{
     const raw = localStorage.getItem('cctv-checklist');
@@ -138,7 +152,6 @@ function load(){
   }catch(e){ console.warn('Failed to load state', e); }
 }
 
-// PDF
 async function generatePDF(){
   collectHeader();
   const { jsPDF } = window.jspdf;
@@ -178,11 +191,18 @@ async function generatePDF(){
   doc.save('CCTV-Checklist.pdf');
 }
 
-// text wrap helper
 function wrapText(doc, text, x, y, maxWidth){
   const lines = doc.splitTextToSize(text, maxWidth);
   for (const line of lines){ doc.text(line, x, y); y += 14; }
   return y;
 }
 
-function escapeHtml(s=''){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeHtml(s=''){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\'':'&#39;'}[c])); }
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0b132b;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:9999';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 1300);
+}
