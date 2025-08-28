@@ -55,21 +55,11 @@
   <script src="./app.js?v=4001"></script>
 
   <!-- TEMP: SERVICE WORKER DISABLED WHILE DEBUGGING
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=4').then(reg => {
-          if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-        });
-      });
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!window._reloadedForSW){
-          window._reloadedForSW = true;
-          location.reload();
-        }
-      });
-    }
-  </script>
+<script src="./app.js?v=4001"
+        onload="alert('onload: app.js tag executed')"
+        onerror="alert('onerror: app.js failed to load')"></script>
+
+
   -->
 </body>
 </html>
