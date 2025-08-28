@@ -14,7 +14,20 @@ button.primary{background:#3a86ff;color:#fff}button.danger{background:#ef476f;co
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .checklist{display:grid;grid-template-columns:min-content 1fr;gap:8px;align-items:start;margin:8px 0}
 .checklist input[type=checkbox]{transform:scale(1.2);margin-top:4px}
-.photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.photos img{max-width:110px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.photos{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:8px;
+  max-height:260px;   /* lets you see more than the first image */
+  overflow:auto;      /* scroll if many photos */
+  padding-right:6px;
+}
+.photos img{
+  max-width:110px;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+  display:block;
+}
 .note{margin-top:8px}
 small.muted{color:#667;display:block;margin-top:6px}
