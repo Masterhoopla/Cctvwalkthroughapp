@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CCTV Checklist</title>
-  <link rel="stylesheet" href="./style.css?v=3003" />
+  <title>CCTV Checklist (SW OFF v4)</title>
+  <link rel="stylesheet" href="./style.css?v=4001" />
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#0b132b"/>
 </head>
 <body>
   <header>
-    <h1>CCTV Pre-Installation Checklist</h1>
+    <h1>CCTV Pre-Installation Checklist — v4</h1>
   </header>
 
   <main>
@@ -48,17 +48,19 @@
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-  <!-- Your app logic (MUST be included) -->
-  <script src="./app.js?v=3003"></script>
+  <!-- Inline sanity check: if you see this alert, the document is FRESH -->
+  <script>alert('INDEX v4 loaded');</script>
 
-  <!-- Service worker registration -->
+  <!-- Your app logic (MUST be included) -->
+  <script src="./app.js?v=4001"></script>
+
+  <!-- TEMP: SERVICE WORKER DISABLED WHILE DEBUGGING
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=3')
-          .then(reg => {
-            if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-          });
+        navigator.serviceWorker.register('./sw.js?v=4').then(reg => {
+          if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+        });
       });
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!window._reloadedForSW){
@@ -68,5 +70,6 @@
       });
     }
   </script>
+  -->
 </body>
 </html>
