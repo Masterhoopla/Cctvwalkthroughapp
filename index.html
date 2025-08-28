@@ -44,15 +44,23 @@
       <button id="btnReset" class="danger">Reset</button>
     </section>
   </main>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js?v=2')
+        .then(reg => {
+          if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+        });
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!window._reloadedForSW){ 
+        window._reloadedForSW = true; 
+        location.reload(); 
+      }
+    });
+  }
+</script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="./app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js');
-      });
-    }
-  </script>
+  
 </body>
 </html>
