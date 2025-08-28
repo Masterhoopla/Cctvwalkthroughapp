@@ -248,62 +248,98 @@ small.muted{color:#667;display:block;margin-top:6px}
 
   // PDF
   async function generatePDF(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit:'pt', format:'a4' });
-    let y = 40;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
 
-    // Use the live-synced state (already updated via input listeners)
-    doc.setFontSize(18);
-    doc.text('CCTV Pre-Installation Report', 40, y); y += 24;
-    doc.setFontSize(12);
-    doc.text(`Customer: ${state.customer.name || ''}`, 40, y); y += 18;
-    doc.text(`Address: ${state.customer.address || ''}`, 40, y); y += 18;
+  // ---- Layout constants
+  const M   = 40;            // page margin
+  const W   = doc.internal.pageSize.getWidth();
+  const H   = doc.internal.pageSize.getHeight();
+  const U   = W - M*2;       // usable width
+  const LINE= 12;            // body line height
+  const GAP = 8;
 
-    if ((state.customer.notes || '').trim()){
-      doc.text('Notes:', 40, y); y += 16;
-      y = wrapText(doc, state.customer.notes, 40, y, 515); y += 8;
-    }
+  let y = M;
 
+  // ---- Header
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('CCTV Pre-Installation Report', M, y); y += 20;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, M, y);
+  y += 16;
+
+  // Separator
+  drawHr(doc, M, y, U); y += 14;
+
+  // ---- Customer Summary Box
+  y = addPageIfNeeded(doc, y, H, M, 110);
+  drawBox(doc, M, y, U, 90);
+  let bx = M + 10, by = y + 18;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text('Customer Summary', bx, by); by += 14;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  by = writeLabelValue(doc, 'Customer', state.customer.name || '', bx, by, U - 20, LINE);
+  by = writeLabelValue(doc, 'Address',  state.customer.address || '', bx, by, U - 20, LINE);
+  if ((state.customer.notes || '').trim()){
+    by = writeLabelValue(doc, 'General Notes', state.customer.notes, bx, by, U - 20, LINE);
+  }
+  y += 90 + 16;
+
+  // ---- Galleries
+  if (!state.galleries.length){
+    doc.setFont('helvetica','italic'); doc.setFontSize(12);
+    doc.text('No galleries added.', M, y); y += 20;
+  } else {
     for (const g of state.galleries){
-      if (y > 760) { doc.addPage(); y = 40; }
-      doc.setFontSize(14);
-      doc.text(`Gallery: ${g.name}`, 40, y); y += 18;
+      // Section header
+      y = addPageIfNeeded(doc, y, H, M, 60);
+      drawSectionHeader(doc, `Gallery: ${g.name}`, M, y, U);
+      y += 28;
 
-      const acts = Object.entries(g.actions).filter(([k,v])=>v).map(([k])=>k.charAt(0).toUpperCase()+k.slice(1));
-      if (acts.length){
-        doc.setFontSize(12);
-        doc.text(`Actions: ${acts.join(', ')}`, 40, y); y += 16;
+      // Checklist (✓)
+      const actions = [
+        ['Add',      !!g.actions.add],
+        ['Replace',  !!g.actions.replace],
+        ['Relocate', !!g.actions.relocate],
+        ['Remove',   !!g.actions.remove],
+      ];
+      doc.setFont('helvetica','normal'); doc.setFontSize(11);
+      const actionLine = actions
+        .filter(([_, v]) => v)
+        .map(([k]) => `✓ ${k}`)
+        .join('   ');
+      if (actionLine){
+        doc.text(actionLine, M, y); y += 16;
       }
+
+      // Notes
       if ((g.note || '').trim()){
-        doc.setFontSize(12);
-        y = wrapText(doc, `Notes: ${g.note}`, 40, y, 515); y += 8;
+        y = wrapText(doc, `Notes: ${g.note}`, M, y, U, 12) + GAP;
       }
 
-      for (const src of g.photos){
-        if (y > 680) { doc.addPage(); y = 40; }
-        try { doc.addImage(src, 'JPEG', 40, y, 200, 150); } catch {}
-        y += 160;
+      // Photos grid (3 per row)
+      if (g.photos && g.photos.length){
+        y = drawPhotoGrid(doc, g.photos, { x: M, y, usableWidth: U, perRow: 3, thumbW: 165, thumbH: 110, gap: 10, pageH: H, margin: M });
+        y += 6;
+      } else {
+        doc.setFont('helvetica','italic'); doc.setFontSize(11);
+        doc.text('No photos.', M, y); y += 14;
       }
-      y += 6;
+
+      // space after section
+      y += 10;
     }
-
-    doc.save('CCTV-Checklist.pdf');
   }
 
-  // helpers
-  function wrapText(doc, text, x, y, maxWidth){
-    const lines = doc.splitTextToSize(text, maxWidth);
-    for (const line of lines){ doc.text(line, x, y); y += 14; }
-    return y;
-  }
-  function escapeHtml(s=''){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function toast(msg){
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(()=>t.remove(), 1300);
-  }
+  // ---- Footer: page numbers
+  numberPages(doc, (pageNum, pageCount) => `Page ${pageNum} of ${pageCount}`);
+
+  doc.save('CCTV-Checklist.pdf');
+}
+
 
   // --- Image orientation: read EXIF only if needed, skip if browser already oriented ---
   function readExifOrientation(arrayBuffer){
@@ -402,6 +438,106 @@ small.muted{color:#667;display:block;margin-top:6px}
 
     return canvas.toDataURL('image/jpeg', quality);
   }
+    function drawHr(doc, x, y, w){ 
+  doc.setDrawColor(200); doc.setLineWidth(0.8);
+  doc.line(x, y, x + w, y);
+  doc.setDrawColor(0); doc.setLineWidth(0.2);
+}
+
+function drawBox(doc, x, y, w, h){
+  doc.setDrawColor(220); doc.setFillColor(248,249,252);
+  doc.roundedRect(x, y, w, h, 6, 6, 'FD');
+  doc.setDrawColor(0);
+}
+
+function writeLabelValue(doc, label, value, x, y, maxW, lineH){
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text(`${label}:`, x, y);
+  const start = x + 65;
+  doc.setFont('helvetica','normal');
+  const lines = doc.splitTextToSize(value || '', maxW - 65);
+  lines.forEach((ln, i) => doc.text(ln, start, y + i*lineH));
+  return y + Math.max(lineH, lines.length*lineH);
+}
+
+function drawSectionHeader(doc, title, x, y, w){
+  doc.setFillColor(238,242,255);
+  doc.setDrawColor(210,220,255);
+  doc.roundedRect(x, y-20, w, 28, 6, 6, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.setTextColor(30, 41, 59);
+  doc.text(title, x + 10, y);
+  doc.setTextColor(0,0,0);
+}
+
+function addPageIfNeeded(doc, y, pageH, margin, needed){
+  if (y + needed <= pageH - margin) return y;
+  doc.addPage();
+  return margin;
+}
+
+function wrapText(doc, text, x, y, maxWidth, lineH=12){
+  const lines = doc.splitTextToSize(text, maxWidth);
+  for (const ln of lines){ 
+    if (y > doc.internal.pageSize.getHeight() - 40){ doc.addPage(); y = 40; }
+    doc.text(ln, x, y); 
+    y += lineH; 
+  }
+  return y;
+}
+
+function drawPhotoGrid(doc, photos, opts){
+  const { x, y: yStart, usableWidth, perRow=3, thumbW=165, thumbH=110, gap=10, pageH, margin } = opts;
+  let y = yStart;
+  let col = 0;
+  let cx = x, cy = y;
+
+  for (const src of photos){
+    // Page break if next row won’t fit
+    if (cy + thumbH > pageH - margin){
+      doc.addPage();
+      cy = margin;
+    }
+    try {
+      doc.addImage(src, 'JPEG', cx, cy, thumbW, thumbH);
+    } catch {} // ignore a bad image, continue
+
+    col++;
+    if (col === perRow){
+      // move to next row
+      col = 0;
+      cx = x;
+      cy += thumbH + gap;
+    } else {
+      cx += thumbW + gap;
+      // if we run out of width because of rounding, wrap
+      if (cx + thumbW > x + usableWidth){
+        col = 0;
+        cx = x;
+        cy += thumbH + gap;
+      }
+    }
+  }
+  // final y is bottom of the last row used
+  return Math.max(yStart, cy + (col === 0 ? 0 : thumbH));
+}
+
+// Footer page numbers
+function numberPages(doc, formatter){
+  const pageCount = doc.getNumberOfPages();
+  for (let i=1; i<=pageCount; i++){
+    doc.setPage(i);
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(120);
+    const text = formatter(i, pageCount);
+    const tw = doc.getTextWidth(text);
+    doc.text(text, W - 40 - tw, H - 20);
+    doc.setTextColor(0);
+  }
+}
+
   </script>
 </body>
 </html>
