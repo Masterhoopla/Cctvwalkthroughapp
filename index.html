@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CCTV Checklist — Fixed PDF (Live Sync + Correct Orientation)</title>
+<title>CCTV Checklist — Single File</title>
 <meta name="theme-color" content="#0b132b"/>
 
 <style>
@@ -18,7 +18,8 @@ textarea{min-height:90px;resize:vertical}
 .row{display:flex;gap:12px;flex-wrap:wrap}
 .space-between{justify-content:space-between}.center{align-items:center}
 button{border:0;border-radius:12px;padding:10px 14px;background:#e3e8ff;color:#0b132b;cursor:pointer}
-button.primary{background:#3a86ff;color:#fff}button.danger{background:#ef476f;color:#fff}
+button.primary{background:#3a86ff;color:#fff}
+button.danger{background:#ef476f;color:#fff}
 .gallery{border:1px dashed #d0d7ea;border-radius:12px;padding:12px;margin:12px 0}
 .gallery h3{margin:0 0 8px 0}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
@@ -28,14 +29,24 @@ button.primary{background:#3a86ff;color:#fff}button.danger{background:#ef476f;co
 .photos img{max-width:110px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);display:block}
 small.muted{color:#667;display:block;margin-top:6px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0b132b;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:9999}
+
+/* Delete badge on photo */
+.photo{position:relative;display:inline-block}
+.photo img{display:block}
+.photo .del{
+  position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;
+  background:#ef476f;color:#fff;border:none;font-size:14px;line-height:22px;
+  text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)
+}
 </style>
 </head>
 <body>
   <header>
-    <h1>CCTV Pre-Installation Checklist — Fixed PDF</h1>
+    <h1>CCTV Pre-Installation Checklist</h1>
   </header>
 
   <main>
+    <!-- Customer Profile -->
     <section class="card">
       <h2>Customer Profile</h2>
       <label>
@@ -46,25 +57,29 @@ small.muted{color:#667;display:block;margin-top:6px}
         Address
         <input type="text" id="customerAddress" placeholder="Address"/>
       </label>
-       <label>
-  Contact Name
-  <input type="text" id="contactName" placeholder="Primary contact name"/>
-</label>
-<label>
-  Contact Phone
-  <input type="tel" id="contactPhone" placeholder="(555) 555-5555"/>
-</label>
-<label>
-  Contact Email
-  <input type="email" id="contactEmail" placeholder="name@example.com"/>
-</label>
-   <section class="card">
-  <h2>General Notes</h2>
-  <label>
-    <textarea id="customerNotes" placeholder="Notes about this walkthrough"></textarea>
-  </label>
-</section>
-   
+      <label>
+        Contact Name
+        <input type="text" id="contactName" placeholder="Primary contact name"/>
+      </label>
+      <label>
+        Contact Phone
+        <input type="tel" id="contactPhone" placeholder="(555) 555-5555"/>
+      </label>
+      <label>
+        Contact Email
+        <input type="email" id="contactEmail" placeholder="name@example.com"/>
+      </label>
+    </section>
+
+    <!-- General Notes -->
+    <section class="card">
+      <h2>General Notes</h2>
+      <label>
+        <textarea id="customerNotes" placeholder="Notes about this walkthrough"></textarea>
+      </label>
+    </section>
+
+    <!-- Galleries -->
     <section class="card">
       <div class="row space-between center">
         <h2>Galleries</h2>
@@ -73,9 +88,12 @@ small.muted{color:#667;display:block;margin-top:6px}
       <div id="galleries" aria-live="polite"></div>
     </section>
 
+    <!-- Actions -->
     <section class="actions">
       <button id="btnExport" class="primary">Download PDF Report</button>
       <button id="btnSave">Save</button>
+      <button id="btnExportSave">Export Save</button>
+      <button id="btnImportSave">Import Save</button>
       <button id="btnReset" class="danger">Reset</button>
     </section>
   </main>
@@ -84,43 +102,45 @@ small.muted{color:#667;display:block;margin-top:6px}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script>
-  // --- State ---
+  // ---------- State ----------
   let state = {
-  customer: { 
-    name: '', 
-    address: '', 
-    contactName: '',
-    contactPhone: '',
-    contactEmail: '',
-    notes: '' 
-  },
-  galleries: []
-};
-
+    customer: {
+      name: '', address: '',
+      contactName: '', contactPhone: '', contactEmail: '',
+      notes: ''
+    },
+    galleries: []
+  };
 
   const el = (id) => document.getElementById(id);
   const galleriesEl = el('galleries');
 
-  // --- Init ---
+  // ---------- Init ----------
   load();
   render();
 
-  // Live-sync customer fields so PDF uses exactly what you see
- el('customerName').addEventListener('input', e => { state.customer.name = e.target.value; save(); });
-el('customerAddress').addEventListener('input', e => { state.customer.address = e.target.value; save(); });
-el('contactName').addEventListener('input', e => { state.customer.contactName = e.target.value; save(); });
-el('contactPhone').addEventListener('input', e => { state.customer.contactPhone = e.target.value; save(); });
-el('contactEmail').addEventListener('input', e => { state.customer.contactEmail = e.target.value; save(); });
-el('customerNotes').addEventListener('input', e => { state.customer.notes = e.target.value; save(); });
+  // Live-sync customer fields
+  el('customerName').addEventListener('input', e => { state.customer.name = e.target.value; save(); });
+  el('customerAddress').addEventListener('input', e => { state.customer.address = e.target.value; save(); });
+  el('contactName').addEventListener('input', e => { state.customer.contactName = e.target.value; save(); });
+  el('contactPhone').addEventListener('input', e => { state.customer.contactPhone = e.target.value; save(); });
+  el('contactEmail').addEventListener('input', e => { state.customer.contactEmail = e.target.value; save(); });
+  el('customerNotes').addEventListener('input', e => { state.customer.notes = e.target.value; save(); });
 
   // Buttons
   el('btnAddGallery').addEventListener('click', onAddGallery);
   el('btnExport').addEventListener('click', generatePDF);
   el('btnSave').addEventListener('click', () => { save(); toast('Saved'); });
+  el('btnExportSave').addEventListener('click', exportSave);
+  el('btnImportSave').addEventListener('click', importSave);
   el('btnReset').addEventListener('click', () => {
-    if (confirm('Clear all data?')) { state = { customer:{name:'',address:'',notes:''}, galleries:[] }; save(); render(); }
+    if (confirm('Clear all data?')) {
+      state = { customer:{name:'',address:'',contactName:'',contactPhone:'',contactEmail:'',notes:''}, galleries:[] };
+      save(); render();
+    }
   });
 
+  // ---------- UI / Data ----------
   function onAddGallery(){
     const name = prompt('Enter gallery name:');
     if (!name) return;
@@ -134,13 +154,13 @@ el('customerNotes').addEventListener('input', e => { state.customer.notes = e.ta
   }
 
   function render(){
-    // header
-  el('customerName').value   = state.customer.name || '';
-el('customerAddress').value= state.customer.address || '';
-el('contactName').value    = state.customer.contactName || '';
-el('contactPhone').value   = state.customer.contactPhone || '';
-el('contactEmail').value   = state.customer.contactEmail || '';
-el('customerNotes').value  = state.customer.notes || '';
+    // header fields
+    el('customerName').value   = state.customer.name || '';
+    el('customerAddress').value= state.customer.address || '';
+    el('contactName').value    = state.customer.contactName || '';
+    el('contactPhone').value   = state.customer.contactPhone || '';
+    el('contactEmail').value   = state.customer.contactEmail || '';
+    el('customerNotes').value  = state.customer.notes || '';
 
     // galleries
     galleriesEl.innerHTML = '';
@@ -181,13 +201,29 @@ el('customerNotes').value  = state.customer.notes || '';
         <div class="photos" id="photos-${idx}"></div>
       `;
 
-      // photos
+      // photos with delete (×)
       const photosWrap = wrap.querySelector('#photos-' + idx);
-      g.photos.forEach(src => {
+      g.photos.forEach((src, pIndex) => {
+        const holder = document.createElement('div');
+        holder.className = 'photo';
+
         const img = new Image();
-        img.src = src;
-        img.alt = 'gallery photo';
-        photosWrap.appendChild(img);
+        img.src = src; img.alt = 'gallery photo';
+        holder.appendChild(img);
+
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.textContent = '×';
+        del.title = 'Delete photo';
+        del.addEventListener('click', () => {
+          if (confirm('Delete this photo?')){
+            g.photos.splice(pIndex, 1);
+            save(); render();
+          }
+        });
+        holder.appendChild(del);
+
+        photosWrap.appendChild(holder);
       });
 
       // checklist bindings
@@ -231,19 +267,15 @@ el('customerNotes').value  = state.customer.notes || '';
       if (!file) return;
 
       try {
-        // Try to let the browser decode with EXIF correctly first
-        let orientedAlready = false, bitmap = null;
+        // Try browser-oriented pixels first
+        let orientedAlready = false;
         try {
-          bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-          orientedAlready = true; // pixels are already oriented
-        } catch {
-          // fallback will handle orientation via EXIF+canvas
-        }
+          await createImageBitmap(file, { imageOrientation: 'from-image' });
+          orientedAlready = true;
+        } catch {}
 
         const fixedDataUrl = await fixImageOrientationAndScale(file, {
-          maxDim: 1600,
-          quality: 0.85,
-          skipOrientation: orientedAlready // <-- skip extra rotation if already oriented
+          maxDim: 1600, quality: 0.85, skipOrientation: orientedAlready
         });
 
         state.galleries[index].photos.push(fixedDataUrl);
@@ -264,7 +296,7 @@ el('customerNotes').value  = state.customer.notes || '';
     input.click();
   }
 
-  // Storage
+  // ---------- Storage ----------
   function save(){ try{ localStorage.setItem('cctv-checklist', JSON.stringify(state)); }catch(e){ console.warn(e); } }
   function load(){
     try{
@@ -273,127 +305,270 @@ el('customerNotes').value  = state.customer.notes || '';
     }catch(e){ console.warn('Failed to load state', e); }
   }
 
-  // PDF
-  async function generatePDF(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'pt', format:'a4' });
-
-  // Layout constants
-  const M = 40;                         // margin
-  const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
-  const U = W - M*2;                    // usable width
-  const LINE = 12;
-  const GAP = 8;
-
-  // ===== Header (centered, two lines) =====
-  let y = M;
-  doc.setFont('helvetica','bold'); doc.setFontSize(16);
-  const headerName = (state.customer.name || '').trim() || 'Customer';
-  centerText(doc, headerName, W, y); y += 20;
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  centerText(doc, 'Pre-Installation Walkthrough Report', W, y);
-  y += 18;
-
-  // subtle divider
-  drawHr(doc, M, y, U); y += 14;
-
-  // ===== Customer Summary Box =====
-  y = addPageIfNeeded(doc, y, H, M, 120);
-  drawBox(doc, M, y, U, 110);
-  let bx = M + 10, by = y + 20;
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('Customer Summary', bx, by); by += 14;
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(11);
-  by = writeLabelValue(doc, 'Customer',      state.customer.name || '',        bx, by, U - 20, LINE);
-  by = writeLabelValue(doc, 'Address',       state.customer.address || '',     bx, by, U - 20, LINE);
-  by = writeLabelValue(doc, 'Contact Name',  state.customer.contactName || '', bx, by, U - 20, LINE);
-  by = writeLabelValue(doc, 'Contact Phone', state.customer.contactPhone || '',bx, by, U - 20, LINE);
-  by = writeLabelValue(doc, 'Contact Email', state.customer.contactEmail || '',bx, by, U - 20, LINE);
-
-  y += 110 + 16;
-
-  // ===== General Notes (own section) =====
-  const notes = (state.customer.notes || '').trim();
-  if (notes){
-    y = addPageIfNeeded(doc, y, H, M, 80);
-    drawSectionHeader(doc, 'General Notes', M, y, U);
-    y += 28;
-    doc.setFont('helvetica','normal'); doc.setFontSize(11);
-    y = wrapText(doc, notes, M, y, U, 14) + 6;
-    drawHr(doc, M, y, U); y += 12;
+  function exportSave(){
+    try{
+      const data = JSON.stringify(state, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safe = s => (s || 'Customer').replace(/[^\w\-]+/g, '_').slice(0, 60);
+      const ts = new Date().toISOString().replace(/[:.]/g,'-');
+      a.download = `${safe(state.customer.name)}_Checklist_${ts}.json`;
+      a.href = url;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast('Save exported');
+    }catch(e){ console.warn(e); toast('Export failed'); }
   }
 
-  // ===== Galleries =====
-  if (!state.galleries.length){
-    doc.setFont('helvetica','italic'); doc.setFontSize(12);
-    doc.text('No galleries added.', M, y); y += 20;
-  } else {
-    for (let gi = 0; gi < state.galleries.length; gi++){
-      const g = state.galleries[gi];
+  function importSave(){
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const obj = JSON.parse(reader.result);
+          if (!obj || typeof obj !== 'object' || !obj.customer || !Array.isArray(obj.galleries)){
+            throw new Error('Invalid save file');
+          }
+          state = obj; save(); render(); toast('Save imported');
+        } catch(err){
+          console.warn(err);
+          alert('Could not import that file. Is it a valid checklist JSON export?');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
 
-      // space before each gallery for visual separation
-      y += 12;
+  // ---------- PDF ----------
+  async function generatePDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
 
-      // Section header
-      y = addPageIfNeeded(doc, y, H, M, 60);
-      drawSectionHeader(doc, `Gallery: ${g.name}`, M, y, U);
+    // Layout
+    const M = 40;
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const U = W - M*2;
+    const LINE = 12, GAP = 8;
+
+    // Header (centered name + subtitle)
+    let y = M;
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    const headerName = (state.customer.name || '').trim() || 'Customer';
+    centerText(doc, headerName, W, y); y += 20;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    centerText(doc, 'Pre-Installation Walkthrough Report', W, y); y += 18;
+
+    drawHr(doc, M, y, U); y += 14;
+
+    // Customer Summary Box
+    y = addPageIfNeeded(doc, y, H, M, 120);
+    drawBox(doc, M, y, U, 110);
+    let bx = M + 10, by = y + 20;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Customer Summary', bx, by); by += 14;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    by = writeLabelValue(doc, 'Customer',      state.customer.name || '',        bx, by, U - 20, LINE);
+    by = writeLabelValue(doc, 'Address',       state.customer.address || '',     bx, by, U - 20, LINE);
+    by = writeLabelValue(doc, 'Contact Name',  state.customer.contactName || '', bx, by, U - 20, LINE);
+    by = writeLabelValue(doc, 'Contact Phone', state.customer.contactPhone || '',bx, by, U - 20, LINE);
+    by = writeLabelValue(doc, 'Contact Email', state.customer.contactEmail || '',bx, by, U - 20, LINE);
+
+    y += 110 + 16;
+
+    // General Notes (own section)
+    const notes = (state.customer.notes || '').trim();
+    if (notes){
+      y = addPageIfNeeded(doc, y, H, M, 80);
+      drawSectionHeader(doc, 'General Notes', M, y, U);
       y += 28;
-
-      // Checklist ✓
-      const actions = [
-        ['Add', !!g.actions.add],
-        ['Replace', !!g.actions.replace],
-        ['Relocate', !!g.actions.relocate],
-        ['Remove', !!g.actions.remove],
-      ];
       doc.setFont('helvetica','normal'); doc.setFontSize(11);
-      const actionLine = actions.filter(a => a[1]).map(a => `✓ ${a[0]}`).join('   ');
-      if (actionLine){ doc.text(actionLine, M, y); y += 16; }
+      y = wrapText(doc, notes, M, y, U, 14) + 6;
+      drawHr(doc, M, y, U); y += 12;
+    }
 
-      // Notes
-      const gnote = (g.note || '').trim();
-      if (gnote){ y = wrapText(doc, `Notes: ${gnote}`, M, y, U, 12) + GAP; }
+    // Galleries
+    if (!state.galleries.length){
+      doc.setFont('helvetica','italic'); doc.setFontSize(12);
+      doc.text('No galleries added.', M, y); y += 20;
+    } else {
+      for (let gi = 0; gi < state.galleries.length; gi++){
+        const g = state.galleries[gi];
 
-      // Photos grid
-      if (g.photos && g.photos.length){
-        y = drawPhotoGrid(doc, g.photos, { x: M, y, usableWidth: U, perRow: 3, thumbW: 165, thumbH: 110, gap: 10, pageH: H, margin: M });
-        y += 10;
-      } else {
-        doc.setFont('helvetica','italic'); doc.setFontSize(11);
-        doc.text('No photos.', M, y); y += 14;
+        // extra spacing between galleries
+        y += 12;
+
+        // Section header
+        y = addPageIfNeeded(doc, y, H, M, 60);
+        drawSectionHeader(doc, `Gallery: ${g.name}`, M, y, U);
+        y += 28;
+
+        // Checklist ✓
+        const actions = [
+          ['Add', !!g.actions.add],
+          ['Replace', !!g.actions.replace],
+          ['Relocate', !!g.actions.relocate],
+          ['Remove', !!g.actions.remove],
+        ];
+        doc.setFont('helvetica','normal'); doc.setFontSize(11);
+        const actionLine = actions.filter(a => a[1]).map(a => `✓ ${a[0]}`).join('   ');
+        if (actionLine){ doc.text(actionLine, M, y); y += 16; }
+
+        // Notes
+        const gnote = (g.note || '').trim();
+        if (gnote){ y = wrapText(doc, `Notes: ${gnote}`, M, y, U, 12) + GAP; }
+
+        // Photos grid (row-aware, no split rows)
+        if (g.photos && g.photos.length){
+          y = drawPhotoGrid(doc, g.photos, {
+            x: M, y, usableWidth: U,
+            perRow: 3, thumbW: 165, thumbH: 110, gap: 10,
+            pageH: H, margin: M
+          });
+          y += 10;
+        } else {
+          doc.setFont('helvetica','italic'); doc.setFontSize(11);
+          doc.text('No photos.', M, y); y += 14;
+        }
+
+        drawHr(doc, M, y, U); y += 6;
       }
+    }
 
-      // underline after each gallery
-      drawHr(doc, M, y, U);
-      y += 6;
+    // Footer: generated date (left) + page numbers (right)
+    numberPages(doc, (pageNum, pageCount) => {
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.setTextColor(120);
+      const when = new Date().toLocaleString();
+      doc.text(when, M, H - 20);
+      const text = `Page ${pageNum} of ${pageCount}`;
+      const tw = doc.getTextWidth(text);
+      doc.text(text, W - M - tw, H - 20);
+      doc.setTextColor(0);
+      return '';
+    });
+
+    // Prompt for file name
+    const safe = s => (s || 'Customer').replace(/[^\w\-]+/g, '_').slice(0, 60);
+    const today = new Date();
+    const ymd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const suggested = `${safe(state.customer.name)}_Walkthrough_${ymd}.pdf`;
+    const name = prompt('File name for the PDF:', suggested) || suggested;
+
+    doc.save(name);
+  }
+
+  // ---------- Helpers ----------
+  function drawHr(doc, x, y, w){ 
+    doc.setDrawColor(200); doc.setLineWidth(0.8);
+    doc.line(x, y, x + w, y);
+    doc.setDrawColor(0); doc.setLineWidth(0.2);
+  }
+
+  function drawBox(doc, x, y, w, h){
+    doc.setDrawColor(220); doc.setFillColor(248,249,252);
+    doc.roundedRect(x, y, w, h, 6, 6, 'FD');
+    doc.setDrawColor(0);
+  }
+
+  function writeLabelValue(doc, label, value, x, y, maxW, lineH){
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text(`${label}:`, x, y);
+    const start = x + 95; // wider label area for long field names
+    doc.setFont('helvetica','normal');
+    const lines = doc.splitTextToSize(value || '', maxW - 95);
+    lines.forEach((ln, i) => doc.text(ln, start, y + i*lineH));
+    return y + Math.max(lineH, lines.length*lineH);
+  }
+
+  function drawSectionHeader(doc, title, x, y, w){
+    doc.setFillColor(238,242,255);
+    doc.setDrawColor(210,220,255);
+    doc.roundedRect(x, y-20, w, 28, 6, 6, 'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text(title, x + 10, y);
+    doc.setTextColor(0,0,0);
+  }
+
+  function addPageIfNeeded(doc, y, pageH, margin, needed){
+    if (y + needed <= pageH - margin) return y;
+    doc.addPage();
+    return margin;
+  }
+
+  function wrapText(doc, text, x, y, maxWidth, lineH=12){
+    const lines = doc.splitTextToSize(text, maxWidth);
+    for (const ln of lines){ 
+      if (y > doc.internal.pageSize.getHeight() - 40){ doc.addPage(); y = 40; }
+      doc.text(ln, x, y); 
+      y += lineH; 
+    }
+    return y;
+  }
+
+  // Row-aware photo grid (never splits a row across pages)
+  function drawPhotoGrid(doc, photos, opts){
+    const { x, y: yStart, usableWidth, perRow=3, thumbW=165, thumbH=110, gap=10, pageH, margin } = opts;
+    let cy = yStart;
+    let pr = perRow;
+    while ((pr * thumbW + (pr - 1) * gap) > usableWidth && pr > 1) pr--;
+
+    for (let i = 0; i < photos.length; i += pr){
+      const row = photos.slice(i, i + pr);
+      if (cy + thumbH > pageH - margin){
+        doc.addPage();
+        cy = margin;
+      }
+      const totalW = row.length * thumbW + (row.length - 1) * gap;
+      let cx = x + Math.max(0, (usableWidth - totalW) / 2);
+
+      for (const src of row){
+        try { doc.addImage(src, 'JPEG', cx, cy, thumbW, thumbH); } catch {}
+        cx += thumbW + gap;
+      }
+      cy += thumbH + gap;
+    }
+    return cy - gap; // no extra trailing gap
+  }
+
+  function numberPages(doc, formatter){
+    const pageCount = doc.getNumberOfPages();
+    for (let i=1; i<=pageCount; i++){
+      doc.setPage(i);
+      formatter(i, pageCount);
     }
   }
 
-  // ===== Footer (left: generated date) + keep page numbers on right =====
-  numberPages(doc, (pageNum, pageCount) => {
-    // left date
-    doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    doc.setTextColor(120);
-    const when = new Date().toLocaleString();
-    doc.text(when, M, H - 20);
-
-    // right page numbers
-    const text = `Page ${pageNum} of ${pageCount}`;
+  function centerText(doc, text, pageWidth, y){
     const tw = doc.getTextWidth(text);
-    doc.text(text, W - M - tw, H - 20);
-    doc.setTextColor(0);
-    return ''; // we handled both sides manually
-  });
+    const x = (pageWidth - tw) / 2;
+    doc.text(text, x, y);
+  }
 
-  doc.save('CCTV-Checklist.pdf');
-}
+  function escapeHtml(s=''){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 
+  function toast(msg){
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(), 1300);
+  }
 
-  // --- Image orientation: read EXIF only if needed, skip if browser already oriented ---
+  // ---------- Image orientation helpers ----------
   function readExifOrientation(arrayBuffer){
     const dv = new DataView(arrayBuffer);
     if (dv.getUint16(0, false) !== 0xFFD8) return 1; // not JPEG
@@ -443,7 +618,6 @@ el('customerNotes').value  = state.customer.notes || '';
   }
 
   async function fixImageOrientationAndScale(file, { maxDim = 1600, quality = 0.85, skipOrientation = false } = {}){
-    // If browser already oriented (skipOrientation), don't apply EXIF transforms again
     let orientation = 1;
     if (!skipOrientation){
       try {
@@ -452,10 +626,8 @@ el('customerNotes').value  = state.customer.notes || '';
       } catch {}
     }
 
-    // Load bitmap/image
     let bitmap;
     try {
-      // If the browser handles EXIF already, this returns oriented pixels (fine)
       bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
     } catch {
       const url = URL.createObjectURL(file);
@@ -467,7 +639,6 @@ el('customerNotes').value  = state.customer.notes || '';
       });
     }
 
-    // Compute target size
     let iw = bitmap.width, ih = bitmap.height;
     let tw = iw, th = ih;
     const longSide = Math.max(iw, ih);
@@ -477,137 +648,17 @@ el('customerNotes').value  = state.customer.notes || '';
       th = Math.round(ih * scale);
     }
 
-    // If we will rotate by 90°, swap canvas dims
     const rotates90 = !skipOrientation && [5,6,7,8].includes(orientation);
     const canvas = document.createElement('canvas');
     canvas.width  = rotates90 ? th : tw;
     canvas.height = rotates90 ? tw : th;
     const ctx = canvas.getContext('2d');
 
-    // Apply orientation iff we didn't skip
     const dim = skipOrientation ? { width: tw, height: th } : drawOriented(ctx, bitmap, canvas.width, canvas.height, orientation);
     ctx.drawImage(bitmap, 0, 0, dim.width, dim.height);
 
     return canvas.toDataURL('image/jpeg', quality);
   }
-    function drawHr(doc, x, y, w){ 
-  doc.setDrawColor(200); doc.setLineWidth(0.8);
-  doc.line(x, y, x + w, y);
-  doc.setDrawColor(0); doc.setLineWidth(0.2);
-}
-
-function drawBox(doc, x, y, w, h){
-  doc.setDrawColor(220); doc.setFillColor(248,249,252);
-  doc.roundedRect(x, y, w, h, 6, 6, 'FD');
-  doc.setDrawColor(0);
-}
-
-function writeLabelValue(doc, label, value, x, y, maxW, lineH){
-  doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text(`${label}:`, x, y);
-  const start = x + 65;
-  doc.setFont('helvetica','normal');
-  const lines = doc.splitTextToSize(value || '', maxW - 65);
-  lines.forEach((ln, i) => doc.text(ln, start, y + i*lineH));
-  return y + Math.max(lineH, lines.length*lineH);
-}
-
-function drawSectionHeader(doc, title, x, y, w){
-  doc.setFillColor(238,242,255);
-  doc.setDrawColor(210,220,255);
-  doc.roundedRect(x, y-20, w, 28, 6, 6, 'FD');
-  doc.setFont('helvetica','bold'); doc.setFontSize(13);
-  doc.setTextColor(30, 41, 59);
-  doc.text(title, x + 10, y);
-  doc.setTextColor(0,0,0);
-}
-
-function addPageIfNeeded(doc, y, pageH, margin, needed){
-  if (y + needed <= pageH - margin) return y;
-  doc.addPage();
-  return margin;
-}
-
-function wrapText(doc, text, x, y, maxWidth, lineH=12){
-  const lines = doc.splitTextToSize(text, maxWidth);
-  for (const ln of lines){ 
-    if (y > doc.internal.pageSize.getHeight() - 40){ doc.addPage(); y = 40; }
-    doc.text(ln, x, y); 
-    y += lineH; 
-  }
-  return y;
-}
-
-function drawPhotoGrid(doc, photos, opts){
-  const { x, y: yStart, usableWidth, perRow=3, thumbW=165, thumbH=110, gap=10, pageH, margin } = opts;
-  let y = yStart;
-  let col = 0;
-  let cx = x, cy = y;
-
-  for (const src of photos){
-    // Page break if next row won’t fit
-    if (cy + thumbH > pageH - margin){
-      doc.addPage();
-      cy = margin;
-    }
-    try {
-      doc.addImage(src, 'JPEG', cx, cy, thumbW, thumbH);
-    } catch {} // ignore a bad image, continue
-
-    col++;
-    if (col === perRow){
-      // move to next row
-      col = 0;
-      cx = x;
-      cy += thumbH + gap;
-    } else {
-      cx += thumbW + gap;
-      // if we run out of width because of rounding, wrap
-      if (cx + thumbW > x + usableWidth){
-        col = 0;
-        cx = x;
-        cy += thumbH + gap;
-      }
-    }
-  }
-  // final y is bottom of the last row used
-  return Math.max(yStart, cy + (col === 0 ? 0 : thumbH));
-}
-
-// Footer page numbers
-function numberPages(doc, formatter){
-  const pageCount = doc.getNumberOfPages();
-  for (let i=1; i<=pageCount; i++){
-    doc.setPage(i);
-    const W = doc.internal.pageSize.getWidth();
-    const H = doc.internal.pageSize.getHeight();
-    doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    doc.setTextColor(120);
-    const text = formatter(i, pageCount);
-    const tw = doc.getTextWidth(text);
-    doc.text(text, W - 40 - tw, H - 20);
-    doc.setTextColor(0);
-  }
-}
- function escapeHtml(s=''){
-    return s.replace(/[&<>"']/g, c => (
-      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
-    ));
-  }
-
-  function toast(msg){
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 1300);
-  }
-   function centerText(doc, text, pageWidth, y){
-  const tw = doc.getTextWidth(text);
-  const x = (pageWidth - tw) / 2;
-  doc.text(text, x, y);
-}
- 
   </script>
 </body>
 </html>
