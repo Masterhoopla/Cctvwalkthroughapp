@@ -46,12 +46,25 @@ small.muted{color:#667;display:block;margin-top:6px}
         Address
         <input type="text" id="customerAddress" placeholder="Address"/>
       </label>
-      <label>
-        General Notes
-        <textarea id="customerNotes" placeholder="Notes about this walkthrough"></textarea>
-      </label>
-    </section>
-
+       <label>
+  Contact Name
+  <input type="text" id="contactName" placeholder="Primary contact name"/>
+</label>
+<label>
+  Contact Phone
+  <input type="tel" id="contactPhone" placeholder="(555) 555-5555"/>
+</label>
+<label>
+  Contact Email
+  <input type="email" id="contactEmail" placeholder="name@example.com"/>
+</label>
+   <section class="card">
+  <h2>General Notes</h2>
+  <label>
+    <textarea id="customerNotes" placeholder="Notes about this walkthrough"></textarea>
+  </label>
+</section>
+   
     <section class="card">
       <div class="row space-between center">
         <h2>Galleries</h2>
@@ -73,9 +86,17 @@ small.muted{color:#667;display:block;margin-top:6px}
   <script>
   // --- State ---
   let state = {
-    customer: { name: '', address: '', notes: '' },
-    galleries: []
-  };
+  customer: { 
+    name: '', 
+    address: '', 
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+    notes: '' 
+  },
+  galleries: []
+};
+
 
   const el = (id) => document.getElementById(id);
   const galleriesEl = el('galleries');
@@ -85,9 +106,12 @@ small.muted{color:#667;display:block;margin-top:6px}
   render();
 
   // Live-sync customer fields so PDF uses exactly what you see
-  el('customerName').addEventListener('input', e => { state.customer.name = e.target.value; save(); });
-  el('customerAddress').addEventListener('input', e => { state.customer.address = e.target.value; save(); });
-  el('customerNotes').addEventListener('input', e => { state.customer.notes = e.target.value; save(); });
+ el('customerName').addEventListener('input', e => { state.customer.name = e.target.value; save(); });
+el('customerAddress').addEventListener('input', e => { state.customer.address = e.target.value; save(); });
+el('contactName').addEventListener('input', e => { state.customer.contactName = e.target.value; save(); });
+el('contactPhone').addEventListener('input', e => { state.customer.contactPhone = e.target.value; save(); });
+el('contactEmail').addEventListener('input', e => { state.customer.contactEmail = e.target.value; save(); });
+el('customerNotes').addEventListener('input', e => { state.customer.notes = e.target.value; save(); });
 
   // Buttons
   el('btnAddGallery').addEventListener('click', onAddGallery);
@@ -111,9 +135,12 @@ small.muted{color:#667;display:block;margin-top:6px}
 
   function render(){
     // header
-    el('customerName').value = state.customer.name || '';
-    el('customerAddress').value = state.customer.address || '';
-    el('customerNotes').value = state.customer.notes || '';
+  el('customerName').value   = state.customer.name || '';
+el('customerAddress').value= state.customer.address || '';
+el('contactName').value    = state.customer.contactName || '';
+el('contactPhone').value   = state.customer.contactPhone || '';
+el('contactEmail').value   = state.customer.contactEmail || '';
+el('customerNotes').value  = state.customer.notes || '';
 
     // galleries
     galleriesEl.innerHTML = '';
@@ -251,91 +278,116 @@ small.muted{color:#667;display:block;margin-top:6px}
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'pt', format:'a4' });
 
-  // ---- Layout constants
-  const M   = 40;            // page margin
-  const W   = doc.internal.pageSize.getWidth();
-  const H   = doc.internal.pageSize.getHeight();
-  const U   = W - M*2;       // usable width
-  const LINE= 12;            // body line height
+  // Layout constants
+  const M = 40;                         // margin
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const U = W - M*2;                    // usable width
+  const LINE = 12;
   const GAP = 8;
 
+  // ===== Header (centered, two lines) =====
   let y = M;
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  const headerName = (state.customer.name || '').trim() || 'Customer';
+  centerText(doc, headerName, W, y); y += 20;
 
-  // ---- Header
-  doc.setFont('helvetica','bold'); doc.setFontSize(18);
-  doc.text('CCTV Pre-Installation Report', M, y); y += 20;
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  centerText(doc, 'Pre-Installation Walkthrough Report', W, y);
+  y += 18;
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, M, y);
-  y += 16;
-
-  // Separator
+  // subtle divider
   drawHr(doc, M, y, U); y += 14;
 
-  // ---- Customer Summary Box
-  y = addPageIfNeeded(doc, y, H, M, 110);
-  drawBox(doc, M, y, U, 90);
-  let bx = M + 10, by = y + 18;
+  // ===== Customer Summary Box =====
+  y = addPageIfNeeded(doc, y, H, M, 120);
+  drawBox(doc, M, y, U, 110);
+  let bx = M + 10, by = y + 20;
 
   doc.setFont('helvetica','bold'); doc.setFontSize(12);
   doc.text('Customer Summary', bx, by); by += 14;
 
   doc.setFont('helvetica','normal'); doc.setFontSize(11);
-  by = writeLabelValue(doc, 'Customer', state.customer.name || '', bx, by, U - 20, LINE);
-  by = writeLabelValue(doc, 'Address',  state.customer.address || '', bx, by, U - 20, LINE);
-  if ((state.customer.notes || '').trim()){
-    by = writeLabelValue(doc, 'General Notes', state.customer.notes, bx, by, U - 20, LINE);
-  }
-  y += 90 + 16;
+  by = writeLabelValue(doc, 'Customer',      state.customer.name || '',        bx, by, U - 20, LINE);
+  by = writeLabelValue(doc, 'Address',       state.customer.address || '',     bx, by, U - 20, LINE);
+  by = writeLabelValue(doc, 'Contact Name',  state.customer.contactName || '', bx, by, U - 20, LINE);
+  by = writeLabelValue(doc, 'Contact Phone', state.customer.contactPhone || '',bx, by, U - 20, LINE);
+  by = writeLabelValue(doc, 'Contact Email', state.customer.contactEmail || '',bx, by, U - 20, LINE);
 
-  // ---- Galleries
+  y += 110 + 16;
+
+  // ===== General Notes (own section) =====
+  const notes = (state.customer.notes || '').trim();
+  if (notes){
+    y = addPageIfNeeded(doc, y, H, M, 80);
+    drawSectionHeader(doc, 'General Notes', M, y, U);
+    y += 28;
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    y = wrapText(doc, notes, M, y, U, 14) + 6;
+    drawHr(doc, M, y, U); y += 12;
+  }
+
+  // ===== Galleries =====
   if (!state.galleries.length){
     doc.setFont('helvetica','italic'); doc.setFontSize(12);
     doc.text('No galleries added.', M, y); y += 20;
   } else {
-    for (const g of state.galleries){
+    for (let gi = 0; gi < state.galleries.length; gi++){
+      const g = state.galleries[gi];
+
+      // space before each gallery for visual separation
+      y += 12;
+
       // Section header
       y = addPageIfNeeded(doc, y, H, M, 60);
       drawSectionHeader(doc, `Gallery: ${g.name}`, M, y, U);
       y += 28;
 
-      // Checklist (✓)
+      // Checklist ✓
       const actions = [
-        ['Add',      !!g.actions.add],
-        ['Replace',  !!g.actions.replace],
+        ['Add', !!g.actions.add],
+        ['Replace', !!g.actions.replace],
         ['Relocate', !!g.actions.relocate],
-        ['Remove',   !!g.actions.remove],
+        ['Remove', !!g.actions.remove],
       ];
       doc.setFont('helvetica','normal'); doc.setFontSize(11);
-      const actionLine = actions
-        .filter(([_, v]) => v)
-        .map(([k]) => `✓ ${k}`)
-        .join('   ');
-      if (actionLine){
-        doc.text(actionLine, M, y); y += 16;
-      }
+      const actionLine = actions.filter(a => a[1]).map(a => `✓ ${a[0]}`).join('   ');
+      if (actionLine){ doc.text(actionLine, M, y); y += 16; }
 
       // Notes
-      if ((g.note || '').trim()){
-        y = wrapText(doc, `Notes: ${g.note}`, M, y, U, 12) + GAP;
-      }
+      const gnote = (g.note || '').trim();
+      if (gnote){ y = wrapText(doc, `Notes: ${gnote}`, M, y, U, 12) + GAP; }
 
-      // Photos grid (3 per row)
+      // Photos grid
       if (g.photos && g.photos.length){
         y = drawPhotoGrid(doc, g.photos, { x: M, y, usableWidth: U, perRow: 3, thumbW: 165, thumbH: 110, gap: 10, pageH: H, margin: M });
-        y += 6;
+        y += 10;
       } else {
         doc.setFont('helvetica','italic'); doc.setFontSize(11);
         doc.text('No photos.', M, y); y += 14;
       }
 
-      // space after section
-      y += 10;
+      // underline after each gallery
+      drawHr(doc, M, y, U);
+      y += 6;
     }
   }
 
-  // ---- Footer: page numbers
-  numberPages(doc, (pageNum, pageCount) => `Page ${pageNum} of ${pageCount}`);
+  // ===== Footer (left: generated date) + keep page numbers on right =====
+  numberPages(doc, (pageNum, pageCount) => {
+    // left date
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(120);
+    const when = new Date().toLocaleString();
+    doc.text(when, M, H - 20);
+
+    // right page numbers
+    const text = `Page ${pageNum} of ${pageCount}`;
+    const tw = doc.getTextWidth(text);
+    doc.text(text, W - M - tw, H - 20);
+    doc.setTextColor(0);
+    return ''; // we handled both sides manually
+  });
 
   doc.save('CCTV-Checklist.pdf');
 }
@@ -550,6 +602,12 @@ function numberPages(doc, formatter){
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 1300);
   }
+   function centerText(doc, text, pageWidth, y){
+  const tw = doc.getTextWidth(text);
+  const x = (pageWidth - tw) / 2;
+  doc.text(text, x, y);
+}
+ 
   </script>
 </body>
 </html>
