@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CCTV Checklist — Single File</title>
+<title>CCTV Checklist — Single File (ZIP enabled)</title>
 <meta name="theme-color" content="#0b132b"/>
 
 <style>
@@ -94,12 +94,15 @@ small.muted{color:#667;display:block;margin-top:6px}
       <button id="btnSave">Save</button>
       <button id="btnExportSave">Export Save</button>
       <button id="btnImportSave">Import Save</button>
+      <button id="btnZipPhotos">Download All Photos (ZIP)</button>
       <button id="btnReset" class="danger">Reset</button>
     </section>
   </main>
 
-  <!-- jsPDF CDN for PDF export -->
+  <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- JSZip for ZIP downloads -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" crossorigin="anonymous"></script>
 
   <script>
   // ---------- State ----------
@@ -133,6 +136,7 @@ small.muted{color:#667;display:block;margin-top:6px}
   el('btnSave').addEventListener('click', () => { save(); toast('Saved'); });
   el('btnExportSave').addEventListener('click', exportSave);
   el('btnImportSave').addEventListener('click', importSave);
+  el('btnZipPhotos').addEventListener('click', downloadAllPhotosZip);
   el('btnReset').addEventListener('click', () => {
     if (confirm('Clear all data?')) {
       state = { customer:{name:'',address:'',contactName:'',contactPhone:'',contactEmail:'',notes:''}, galleries:[] };
@@ -346,6 +350,47 @@ small.muted{color:#667;display:block;margin-top:6px}
     input.click();
   }
 
+  // ---------- ZIP download of all photos ----------
+  function dataURLtoBlob(dataURL){
+    const [meta, data] = dataURL.split(',');
+    const isBase64 = /;base64$/i.test(meta);
+    const mime = (meta.match(/data:(.*?)(;|,)/)||[])[1] || 'application/octet-stream';
+    const bytes = isBase64 ? atob(data) : decodeURIComponent(data);
+    const buf = new Uint8Array(bytes.length);
+    for (let i=0; i<bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+    return new Blob([buf], { type: mime });
+  }
+  function downloadBlob(filename, blob){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+  async function downloadAllPhotosZip(){
+    if (!window.JSZip){ alert('ZIP library not loaded'); return; }
+    const zip = new JSZip();
+    const safe = s => (s || 'Customer').replace(/[^\w\-]+/g, '_').slice(0,60);
+
+    let count = 0;
+    for (const g of state.galleries){
+      const folder = zip.folder(safe(g.name) || 'Gallery');
+      for (let i=0;i<g.photos.length;i++){
+        const src = g.photos[i];
+        const blob = dataURLtoBlob(src);
+        folder.file(`${safe(state.customer.name)}_${safe(g.name)}_${i+1}.jpg`, blob);
+        count++;
+      }
+    }
+
+    if (count === 0){ toast('No photos to zip'); return; }
+    const content = await zip.generateAsync({ type:'blob' });
+    const today = new Date();
+    const ymd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const filename = `${safe(state.customer.name)}_Photos_${ymd}.zip`;
+    downloadBlob(filename, content);
+  }
+
   // ---------- PDF ----------
   async function generatePDF(){
     const { jsPDF } = window.jspdf;
@@ -458,7 +503,7 @@ small.muted{color:#667;display:block;margin-top:6px}
       return '';
     });
 
-    // Prompt for file name
+    // Prompt for filename
     const safe = s => (s || 'Customer').replace(/[^\w\-]+/g, '_').slice(0, 60);
     const today = new Date();
     const ymd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -484,7 +529,7 @@ small.muted{color:#667;display:block;margin-top:6px}
   function writeLabelValue(doc, label, value, x, y, maxW, lineH){
     doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text(`${label}:`, x, y);
-    const start = x + 95; // wider label area for long field names
+    const start = x + 95;
     doc.setFont('helvetica','normal');
     const lines = doc.splitTextToSize(value || '', maxW - 95);
     lines.forEach((ln, i) => doc.text(ln, start, y + i*lineH));
