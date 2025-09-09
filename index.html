@@ -41,12 +41,20 @@ small.muted{color:#667;display:block;margin-top:6px}
   text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)
 }
 
-/* Floating Top button */
-.fab-top{
+/* Floating FABs */
+.fab-group{
   position:fixed; right:18px; bottom:18px; z-index:9999;
+  display:flex; flex-direction:column; gap:10px;
+}
+.fab{
   border:0; border-radius:999px; padding:12px 14px;
   background:#0b132b; color:#fff; box-shadow:0 6px 20px rgba(0,0,0,.18);
 }
+
+/* Gallery quick index */
+.gallery-index{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
+.gallery-index .pill{padding:6px 10px;border-radius:999px;background:#eef2ff;border:1px solid #d6defc;cursor:pointer}
+.gallery-index .pill small{opacity:.7}
 </style>
 </head>
 <body>
@@ -94,6 +102,7 @@ small.muted{color:#667;display:block;margin-top:6px}
         <h2>Galleries</h2>
         <button class="primary" id="btnAddGallery">Add Gallery</button>
       </div>
+      <div id="galleryIndex" class="gallery-index" aria-label="Gallery quick navigation"></div>
       <div id="galleries" aria-live="polite"></div>
     </section>
 
@@ -108,8 +117,11 @@ small.muted{color:#667;display:block;margin-top:6px}
     </section>
   </main>
 
-  <!-- Floating Top button -->
-  <button id="btnTop" class="fab-top" aria-label="Back to top">↑ Top</button>
+  <!-- Floating FABs -->
+  <div class="fab-group">
+    <button id="btnFabAdd" class="fab" title="Add gallery">＋ Gallery</button>
+    <button id="btnTop" class="fab" aria-label="Back to top">↑ Top</button>
+  </div>
 
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -129,6 +141,7 @@ small.muted{color:#667;display:block;margin-top:6px}
 
   const el = (id) => document.getElementById(id);
   const galleriesEl = el('galleries');
+  const galleryIndexEl = el('galleryIndex');
 
   // ---------- Init ----------
   load();
@@ -143,7 +156,10 @@ small.muted{color:#667;display:block;margin-top:6px}
   el('customerNotes').addEventListener('input', e => { state.customer.notes = e.target.value; save(); });
 
   // Buttons
-  el('btnAddGallery').addEventListener('click', onAddGallery);
+  const addGalleryHandlers = () => onAddGallery();
+  el('btnAddGallery').addEventListener('click', addGalleryHandlers);
+  el('btnFabAdd').addEventListener('click', addGalleryHandlers);
+
   el('btnExport').addEventListener('click', generatePDF);
   el('btnSave').addEventListener('click', () => { save(); toast('Saved'); });
   el('btnExportSave').addEventListener('click', exportSave);
@@ -188,17 +204,33 @@ small.muted{color:#667;display:block;margin-top:6px}
     el('contactEmail').value   = state.customer.contactEmail || '';
     el('customerNotes').value  = state.customer.notes || '';
 
+    // Gallery quick index
+    galleryIndexEl.innerHTML = '';
+    state.galleries.forEach((g, idx) => {
+      const pill = document.createElement('button');
+      pill.className = 'pill';
+      pill.innerHTML = `${escapeHtml(g.name)} <small>(${g.photos.length})</small>`;
+      pill.addEventListener('click', () => {
+        const target = document.getElementById('gal-' + idx);
+        if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+      galleryIndexEl.appendChild(pill);
+    });
+
     // galleries
     galleriesEl.innerHTML = '';
     state.galleries.forEach((g, idx) => {
       const wrap = document.createElement('div');
       wrap.className = 'gallery';
+      wrap.id = 'gal-' + idx;
       wrap.innerHTML = `
         <div class="row space-between center">
           <h3>${escapeHtml(g.name)}</h3>
           <div class="controls">
             <button data-act="photo" data-i="${idx}">Add Photo</button>
             <button data-act="rename" data-i="${idx}">Rename</button>
+            <button data-act="up" data-i="${idx}">Move ↑</button>
+            <button data-act="down" data-i="${idx}">Move ↓</button>
             <button class="danger" data-act="delete" data-i="${idx}">Remove</button>
           </div>
         </div>
@@ -276,6 +308,18 @@ small.muted{color:#667;display:block;margin-top:6px}
           if (act === 'delete') {
             if (confirm('Delete this gallery?')) { state.galleries.splice(idx,1); save(); render(); }
           }
+          if (act === 'up' && idx > 0){
+            const tmp = state.galleries[idx-1];
+            state.galleries[idx-1] = state.galleries[idx];
+            state.galleries[idx] = tmp; save(); render();
+            document.getElementById('gal-' + (idx-1))?.scrollIntoView({behavior:'smooth', block:'start'});
+          }
+          if (act === 'down' && idx < state.galleries.length-1){
+            const tmp = state.galleries[idx+1];
+            state.galleries[idx+1] = state.galleries[idx];
+            state.galleries[idx] = tmp; save(); render();
+            document.getElementById('gal-' + (idx+1))?.scrollIntoView({behavior:'smooth', block:'start'});
+          }
         });
       });
 
@@ -301,7 +345,7 @@ small.muted{color:#667;display:block;margin-top:6px}
         } catch {}
 
         const fixedDataUrl = await fixImageOrientationAndScale(file, {
-          maxDim: 1400, // a bit faster than 1600
+          maxDim: 1400,
           quality: 0.80,
           skipOrientation: orientedAlready
         });
@@ -425,7 +469,7 @@ small.muted{color:#667;display:block;margin-top:6px}
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
     const U = W - M*2;
-    const LINE = 12, GAP = 8;
+    const LINE = 12;
 
     // Header (centered name + subtitle)
     let y = M;
@@ -438,24 +482,36 @@ small.muted{color:#667;display:block;margin-top:6px}
 
     drawHr(doc, M, y, U); y += 14;
 
-    // Customer Summary Box
-    y = addPageIfNeeded(doc, y, H, M, 120);
-    drawBox(doc, M, y, U, 110);
-    let bx = M + 10, by = y + 20;
+    // Customer Summary Box (dynamic height)
+    const boxPadTop = 20, boxPadSide = 10;
+    let need = 0;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    need += 14; // title
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    need += measureLabelValueHeight(doc, 'Customer',      state.customer.name || '', U - 20, LINE);
+    need += measureLabelValueHeight(doc, 'Address',       state.customer.address || '', U - 20, LINE);
+    need += measureLabelValueHeight(doc, 'Contact Name',  state.customer.contactName || '', U - 20, LINE);
+    need += measureLabelValueHeight(doc, 'Contact Phone', state.customer.contactPhone || '', U - 20, LINE);
+    need += measureLabelValueHeight(doc, 'Contact Email', state.customer.contactEmail || '', U - 20, LINE);
+    const boxH = boxPadTop + need + 10;
+
+    y = addPageIfNeeded(doc, y, H, M, boxH + 16);
+    drawBox(doc, M, y, U, boxH);
+    let bx = M + boxPadSide, by = y + boxPadTop;
 
     doc.setFont('helvetica','bold'); doc.setFontSize(12);
     doc.text('Customer Summary', bx, by); by += 14;
 
     doc.setFont('helvetica','normal'); doc.setFontSize(11);
-    by = writeLabelValue(doc, 'Customer',      state.customer.name || '',        bx, by, U - 20, LINE);
-    by = writeLabelValue(doc, 'Address',       state.customer.address || '',     bx, by, U - 20, LINE);
-    by = writeLabelValue(doc, 'Contact Name',  state.customer.contactName || '', bx, by, U - 20, LINE);
-    by = writeLabelValue(doc, 'Contact Phone', state.customer.contactPhone || '',bx, by, U - 20, LINE);
-    by = writeLabelValue(doc, 'Contact Email', state.customer.contactEmail || '',bx, by, U - 20, LINE);
+    by = writeLabelValue(doc, 'Customer',      state.customer.name || '',        bx, by, U - 2*boxPadSide, LINE);
+    by = writeLabelValue(doc, 'Address',       state.customer.address || '',     bx, by, U - 2*boxPadSide, LINE);
+    by = writeLabelValue(doc, 'Contact Name',  state.customer.contactName || '', bx, by, U - 2*boxPadSide, LINE);
+    by = writeLabelValue(doc, 'Contact Phone', state.customer.contactPhone || '',bx, by, U - 2*boxPadSide, LINE);
+    by = writeLabelValue(doc, 'Contact Email', state.customer.contactEmail || '',bx, by, U - 2*boxPadSide, LINE);
 
-    y += 110 + 16;
+    y += boxH + 16;
 
-    // General Notes (own section)
+    // General Notes (own section; spans pages)
     const notes = (state.customer.notes || '').trim();
     if (notes){
       y = addPageIfNeeded(doc, y, H, M, 80);
@@ -474,7 +530,7 @@ small.muted{color:#667;display:block;margin-top:6px}
       for (let gi = 0; gi < state.galleries.length; gi++){
         const g = state.galleries[gi];
 
-        // Always start a gallery on a new page (except very first page after header)
+        // Always start a gallery on a new page
         if (doc.internal.getCurrentPageInfo().pageNumber > 1 || gi > 0){
           doc.addPage();
           y = M;
@@ -502,7 +558,7 @@ small.muted{color:#667;display:block;margin-top:6px}
         // Photos grid with continued header when page breaks
         if (g.photos && g.photos.length){
           const continuedHeader = (d) => {
-            drawSectionHeader(d, `Gallery: ${g.name} (continued)`, M, M, U);
+            drawSectionHeader(d, `Gallery: ${g.name} — continued`, M, M, U);
           };
 
           y = drawPhotoGrid(doc, g.photos, {
@@ -564,6 +620,11 @@ small.muted{color:#667;display:block;margin-top:6px}
     doc.setDrawColor(220); doc.setFillColor(248,249,252);
     doc.roundedRect(x, y, w, h, 6, 6, 'FD');
     doc.setDrawColor(0);
+  }
+
+  function measureLabelValueHeight(doc, label, value, maxW, lineH){
+    const lines = doc.splitTextToSize(value || '', maxW - 95);
+    return Math.max(lineH, lines.length * lineH);
   }
 
   function writeLabelValue(doc, label, value, x, y, maxW, lineH){
@@ -653,7 +714,7 @@ small.muted{color:#667;display:block;margin-top:6px}
   }
 
   function escapeHtml(s=''){
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));
   }
 
   function toast(msg){
