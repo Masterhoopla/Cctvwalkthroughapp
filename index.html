@@ -18,7 +18,7 @@ textarea{min-height:90px;resize:vertical}
 .row{display:flex;gap:12px;flex-wrap:wrap}
 .space-between{justify-content:space-between}.center{align-items:center}
 .actions{display:flex;flex-wrap:wrap;gap:10px}
-.actions .danger{margin-left:auto} /* push Reset far right */
+.actions .danger{margin-left:auto}
 button{border:0;border-radius:12px;padding:10px 14px;background:#e3e8ff;color:#0b132b;cursor:pointer}
 button.primary{background:#3a86ff;color:#fff}
 button.danger{background:#ef476f;color:#fff}
@@ -35,23 +35,13 @@ small.muted{color:#667;display:block;margin-top:6px}
 /* Photo chip + delete button */
 .photo{position:relative;display:inline-block}
 .photo img{display:block}
-.photo .del{
-  position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;
-  background:#ef476f;color:#fff;border:none;font-size:14px;line-height:22px;
-  text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)
-}
+.photo .del{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:#ef476f;color:#fff;border:none;font-size:14px;line-height:22px;text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)}
 
 /* Floating FABs */
-.fab-group{
-  position:fixed; right:18px; bottom:18px; z-index:9999;
-  display:flex; flex-direction:column; gap:10px;
-}
-.fab{
-  border:0; border-radius:999px; padding:12px 14px;
-  background:#0b132b; color:#fff; box-shadow:0 6px 20px rgba(0,0,0,.18);
-}
+.fab-group{position:fixed; right:18px; bottom:18px; z-index:9999; display:flex; flex-direction:column; gap:10px}
+.fab{border:0;border-radius:999px;padding:12px 14px;background:#0b132b;color:#fff;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 
-/* Gallery quick index */
+/* Gallery index (quick jump) */
 .gallery-index{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
 .gallery-index .pill{padding:6px 10px;border-radius:999px;background:#eef2ff;border:1px solid #d6defc;cursor:pointer}
 .gallery-index .pill small{opacity:.7}
@@ -171,9 +161,7 @@ small.muted{color:#667;display:block;margin-top:6px}
       save(); render();
     }
   });
-  el('btnTop').addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  el('btnTop').addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); });
 
   // ---------- UI / Data ----------
   function onAddGallery(){
@@ -337,19 +325,10 @@ small.muted{color:#667;display:block;margin-top:6px}
       if (!file) return;
 
       try {
-        // Try browser-oriented pixels first
         let orientedAlready = false;
-        try {
-          await createImageBitmap(file, { imageOrientation: 'from-image' });
-          orientedAlready = true;
-        } catch {}
+        try { await createImageBitmap(file, { imageOrientation: 'from-image' }); orientedAlready = true; } catch {}
 
-        const fixedDataUrl = await fixImageOrientationAndScale(file, {
-          maxDim: 1400,
-          quality: 0.80,
-          skipOrientation: orientedAlready
-        });
-
+        const fixedDataUrl = await fixImageOrientationAndScale(file, { maxDim: 1400, quality: 0.80, skipOrientation: orientedAlready });
         state.galleries[index].photos.push(fixedDataUrl);
         save(); render();
 
@@ -358,10 +337,7 @@ small.muted{color:#667;display:block;margin-top:6px}
       } catch (err) {
         console.warn('Image normalize failed; falling back to raw', err);
         const reader = new FileReader();
-        reader.onload = () => {
-          state.galleries[index].photos.push(reader.result);
-          save(); render();
-        };
+        reader.onload = () => { state.galleries[index].photos.push(reader.result); save(); render(); };
         reader.readAsDataURL(file);
       }
     };
@@ -485,8 +461,7 @@ small.muted{color:#667;display:block;margin-top:6px}
     // Customer Summary Box (dynamic height)
     const boxPadTop = 20, boxPadSide = 10;
     let need = 0;
-    doc.setFont('helvetica','bold'); doc.setFontSize(12);
-    need += 14; // title
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); need += 14;
     doc.setFont('helvetica','normal'); doc.setFontSize(11);
     need += measureLabelValueHeight(doc, 'Customer',      state.customer.name || '', U - 20, LINE);
     need += measureLabelValueHeight(doc, 'Address',       state.customer.address || '', U - 20, LINE);
@@ -511,7 +486,7 @@ small.muted{color:#667;display:block;margin-top:6px}
 
     y += boxH + 16;
 
-    // General Notes (own section; spans pages)
+    // General Notes (own section; can span pages)
     const notes = (state.customer.notes || '').trim();
     if (notes){
       y = addPageIfNeeded(doc, y, H, M, 80);
@@ -530,15 +505,16 @@ small.muted{color:#667;display:block;margin-top:6px}
       for (let gi = 0; gi < state.galleries.length; gi++){
         const g = state.galleries[gi];
 
-        // Always start a gallery on a new page
-        if (doc.internal.getCurrentPageInfo().pageNumber > 1 || gi > 0){
+        // Only start a new page if header won't fit
+        const HEADER_H = 28;
+        if (y + HEADER_H > H - M){
           doc.addPage();
           y = M;
         }
 
         // Section header
         drawSectionHeader(doc, `Gallery: ${g.name}`, M, y, U);
-        y += 28;
+        y += HEADER_H;
 
         // Checklist ✓
         const actions = [
@@ -555,7 +531,7 @@ small.muted{color:#667;display:block;margin-top:6px}
         const gnote = (g.note || '').trim();
         if (gnote){ y = wrapText(doc, `Notes: ${gnote}`, M, y, U, 12) + 8; }
 
-        // Photos grid with continued header when page breaks
+        // Photos grid with continued header on overflow pages
         if (g.photos && g.photos.length){
           const continuedHeader = (d) => {
             drawSectionHeader(d, `Gallery: ${g.name} — continued`, M, M, U);
@@ -573,14 +549,9 @@ small.muted{color:#667;display:block;margin-top:6px}
           doc.text('No photos.', M, y); y += 14;
         }
 
-        // underline after gallery (on last page of that gallery)
+        // underline after gallery; do NOT force a new page
         drawHr(doc, M, y, U);
-
-        // Force next gallery to start fresh on a new page
-        if (gi < state.galleries.length - 1){
-          doc.addPage();
-          y = M;
-        }
+        y += 12; // breathing room before next gallery
       }
     }
 
@@ -599,7 +570,6 @@ small.muted{color:#667;display:block;margin-top:6px}
       return '';
     });
 
-    // Prompt for filename
     const safe = s => (s || 'Customer').replace(/[^\w\-]+/g, '_').slice(0, 60);
     const today = new Date();
     const ymd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -610,7 +580,7 @@ small.muted{color:#667;display:block;margin-top:6px}
   }
 
   // ---------- Helpers ----------
-  function drawHr(doc, x, y, w){ 
+  function drawHr(doc, x, y, w){
     doc.setDrawColor(200); doc.setLineWidth(0.8);
     doc.line(x, y, x + w, y);
     doc.setDrawColor(0); doc.setLineWidth(0.2);
@@ -630,7 +600,7 @@ small.muted{color:#667;display:block;margin-top:6px}
   function writeLabelValue(doc, label, value, x, y, maxW, lineH){
     doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text(`${label}:`, x, y);
-    const start = x + 95; // wider label column
+    const start = x + 95;
     doc.setFont('helvetica','normal');
     const lines = doc.splitTextToSize(value || '', maxW - 95);
     lines.forEach((ln, i) => doc.text(ln, start, y + i*lineH));
@@ -655,21 +625,16 @@ small.muted{color:#667;display:block;margin-top:6px}
 
   function wrapText(doc, text, x, y, maxWidth, lineH=12){
     const lines = doc.splitTextToSize(text, maxWidth);
-    for (const ln of lines){ 
+    for (const ln of lines){
       if (y > doc.internal.pageSize.getHeight() - 40){ doc.addPage(); y = 40; }
-      doc.text(ln, x, y); 
-      y += lineH; 
+      doc.text(ln, x, y);
+      y += lineH;
     }
     return y;
   }
 
-  // Row-aware photo grid with continuation header callback
   function drawPhotoGrid(doc, photos, opts){
-    const {
-      x, y: yStart, usableWidth,
-      perRow=3, thumbW=165, thumbH=110, gap=10,
-      pageH, margin, onNewPage
-    } = opts;
+    const { x, y: yStart, usableWidth, perRow=3, thumbW=165, thumbH=110, gap=10, pageH, margin, onNewPage } = opts;
 
     let cy = yStart;
     let pr = perRow;
@@ -678,15 +643,13 @@ small.muted{color:#667;display:block;margin-top:6px}
     for (let i = 0; i < photos.length; i += pr){
       const row = photos.slice(i, i + pr);
 
-      // If row won't fit, start a new page and print "(continued)" header
       if (cy + thumbH > pageH - margin){
         doc.addPage();
         cy = margin;
         if (typeof onNewPage === 'function') onNewPage(doc);
-        cy += 28; // space below header
+        cy += 28;
       }
 
-      // center row
       const totalW = row.length * thumbW + (row.length - 1) * gap;
       let cx = x + Math.max(0, (usableWidth - totalW) / 2);
 
@@ -696,7 +659,7 @@ small.muted{color:#667;display:block;margin-top:6px}
       }
       cy += thumbH + gap;
     }
-    return cy - gap; // no trailing gap
+    return cy - gap;
   }
 
   function numberPages(doc, formatter){
@@ -713,16 +676,15 @@ small.muted{color:#667;display:block;margin-top:6px}
     doc.text(text, x, y);
   }
 
-function escapeHtml(s = '') {
-  return s.replace(/[&<>"']/g, c => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[c]));
-}
-
+  function escapeHtml(s=''){
+    return s.replace(/[&<>"']/g, c => ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[c]));
+  }
 
   function toast(msg){
     const t = document.createElement('div');
@@ -735,15 +697,15 @@ function escapeHtml(s = '') {
   // ---------- Image orientation helpers ----------
   function readExifOrientation(arrayBuffer){
     const dv = new DataView(arrayBuffer);
-    if (dv.getUint16(0, false) !== 0xFFD8) return 1; // not JPEG
+    if (dv.getUint16(0, false) !== 0xFFD8) return 1;
     let offset = 2;
     const length = dv.byteLength;
     while (offset < length) {
       const marker = dv.getUint16(offset, false); offset += 2;
-      if (marker === 0xFFE1) { // APP1
+      if (marker === 0xFFE1) {
         const exifLength = dv.getUint16(offset, false); offset += 2;
-        if (dv.getUint32(offset, false) !== 0x45786966) return 1; // "Exif"
-        offset += 6; // "Exif\0\0"
+        if (dv.getUint32(offset, false) !== 0x45786966) return 1;
+        offset += 6;
         const tiffOffset = offset;
         const little = dv.getUint16(tiffOffset, false) === 0x4949;
         const firstIFDOffset = dv.getUint32(tiffOffset + 4, little);
@@ -784,10 +746,7 @@ function escapeHtml(s = '') {
   async function fixImageOrientationAndScale(file, { maxDim = 1400, quality = 0.80, skipOrientation = false } = {}){
     let orientation = 1;
     if (!skipOrientation){
-      try {
-        const buf = await file.arrayBuffer();
-        orientation = readExifOrientation(buf) || 1;
-      } catch {}
+      try { const buf = await file.arrayBuffer(); orientation = readExifOrientation(buf) || 1; } catch {}
     }
 
     let bitmap;
