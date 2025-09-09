@@ -713,9 +713,16 @@ small.muted{color:#667;display:block;margin-top:6px}
     doc.text(text, x, y);
   }
 
-  function escapeHtml(s=''){
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));
-  }
+function escapeHtml(s = '') {
+  return s.replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
 
   function toast(msg){
     const t = document.createElement('div');
